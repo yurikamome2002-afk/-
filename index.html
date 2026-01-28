@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Shadow Evolve Counter</title>
+
+<link rel="manifest" href="data:application/manifest+json,{
+  &quot;name&quot;:&quot;Evolve Counter&quot;,
+  &quot;short_name&quot;:&quot;Evolve&quot;,
+  &quot;display&quot;:&quot;standalone&quot;,
+  &quot;background_color&quot;:&quot;#000000&quot;,
+  &quot;theme_color&quot;:&quot;#000000&quot;
+}">
+
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  touch-action: manipulation;
+}
+
+button {
+  font-size: 18px;
+  padding: 10px;
+}
+
+.container {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100vh;
+}
+
+.hp {
+  display: flex;
+  justify-content: space-around;
+  font-size: 32px;
+}
+
+.pp {
+  text-align: center;
+  font-size: 24px;
+  user-select: none;
+}
+
+.center {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.bottom {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+.orb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 5px;
+  opacity: 0.3;
+}
+
+.orb.active { opacity: 1; }
+.orb.yellow { background: gold; }
+.orb.purple { background: purple; }
+
+.locked {
+  filter: grayscale(1);
+  opacity: 0.2;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- 先攻後攻 -->
+  <div class="center">
+    <button onclick="setFirst(true)">先攻</button>
+    <div id="firstStatus">未選択</div>
+    <button onclick="setFirst(false)">後攻</button>
+  </div>
+
+  <!-- HP -->
+  <div class="hp">
+    <div>
+      <button onclick="changeHp('enemy',-1)">-</button>
+      <span id="enemyHp">20</span>
+      <button onclick="changeHp('enemy',1)">+</button>
+    </div>
+    <div>
+      <button onclick="changeHp('self',-1)">-</button>
+      <span id="selfHp">20</span>
+      <button onclick="changeHp('self',1)">+</button>
+    </div>
+  </div>
+
+  <!-- PP -->
+  <div class="pp" id="ppArea">
+    PP: <span id="pp">0</span>/<span id="maxPp">0</span><br>
+    <button onclick="changePp(1)">▲</button>
+    <button onclick="changePp(-1)">▼</button>
+  </div>
+
+  <!-- 下部：EP / SEP / ターン -->
+  <div class="bottom">
+    <div id="epArea"></div>
+    <div>
+      Turn <span id="turn">0</span><br>
+      <button onclick="nextTurn()">ターン開始</button>
+    </div>
+    <div id="sepArea"></div>
+  </div>
+
+</div>
+
+<script>
+let selfHp=20, enemyHp=20;
+let pp=0, maxPp=0;
+let turn=0;
+let isFirst=null;
+
+let ep=3;
+let sepUsed=false;
+
+function setFirst(f){
+  isFirst=f;
+  document.getElementById("firstStatus").textContent = f?"先攻":"後攻";
+  renderOrbs();
+}
+
+function changeHp(who,val){
+  if(who==="self") selfHp=Math.max(0,selfHp+val);
+  else enemyHp=Math.max(0,enemyHp+val);
+  document.getElementById("selfHp").textContent=selfHp;
+  document.getElementById("enemyHp").textContent=enemyHp;
+}
+
+function changePp(val){
+  pp=Math.max(0,Math.min(maxPp,pp+val));
+  document.getElementById("pp").textContent=pp;
+}
+
+function nextTurn(){
+  turn++;
+  maxPp=Math.min(10, maxPp+1);
+  pp=maxPp;
+  document.getElementById("turn").textContent=turn;
+  document.getElementById("maxPp").textContent=maxPp;
+  document.getElementById("pp").textContent=pp;
+  renderOrbs();
+}
+
+function renderOrbs(){
+  const epArea=document.getElementById("epArea");
+  epArea.innerHTML="";
+  if(isFirst===false){
+    for(let i=0;i<3;i++){
+      const o=document.createElement("div");
+      o.className="orb yellow "+(i<ep?"active":"");
+      o.onclick=()=>{ if(i<ep){ep--;renderOrbs();}};
+      epArea.appendChild(o);
+    }
+  }
+
+  const sepArea=document.getElementById("sepArea");
+  sepArea.innerHTML="";
+  const sep=document.createElement("div");
+  let unlocked = (isFirst===false && turn>=6) || (isFirst===true && turn>=7);
+  sep.className="orb purple "+(unlocked&&!sepUsed?"active":"locked");
+  sep.onclick=()=>{
+    if(unlocked&&!sepUsed){
+      sepUsed=true;
+      renderOrbs();
+    }
+  };
+  sepArea.appendChild(sep);
+}
+
+// PPスワイプ
+let startY=null;
+document.getElementById("ppArea").addEventListener("touchstart",e=>{
+  startY=e.touches[0].clientY;
+});
+document.getElementById("ppArea").addEventListener("touchend",e=>{
+  if(startY===null)return;
+  let dy=e.changedTouches[0].clientY-startY;
+  if(dy<-30) changePp(1);
+  if(dy>30) changePp(-1);
+  startY=null;
+});
+</script>
+</body>
+</html>
